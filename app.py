@@ -24,22 +24,26 @@ if os.path.exists(ARQUIVO_DADOS):
 else:
     df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Método"])
 
-# --- SIDEBAR (Entradas) ---
+# --- SIDEBAR (Entradas Corrigidas) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/1611/1611154.png", width=80)
     st.title("PRO Control v1.0")
     st.divider()
     
+    # 1. O SELECIONADOR DE FLUXO FICA FORA DO FORM
+    # Isso permite que o Streamlit recarregue as categorias instantaneamente
+    tipo = st.selectbox("Fluxo", ["Receita", "Despesa"])
+    
+    # 2. DEFINIÇÃO DINÂMICA DAS CATEGORIAS
+    if tipo == "Receita":
+        cats = ["Salário", "Freelance", "Investimentos", "Extra"]
+    else:
+        cats = ["Mercado", "Alimentação", "Casa", "Lazer", "Transporte", "Saúde", "Educação"]
+            
+    # 3. O FORMULÁRIO APENAS PARA OS DADOS DE ENVIO
     with st.form("nova_transacao", clear_on_submit=True):
         data = st.date_input("Data da Transação", datetime.now())
-        tipo = st.selectbox("Fluxo", ["Receita", "Despesa"])
-        
-        if tipo == "Receita":
-            cats = ["Salário", "Freelance", "Investimentos", "Extra"]
-        elif tipo == "Despesa":
-            cats = ["Mercado", "Alimentação", "Casa", "Lazer", "Transporte", "Saúde", "Educação"]
-            
-        cat = st.selectbox("Categoria", cats)
+        cat = st.selectbox("Categoria", cats) # Agora o cats já está filtrado pelo 'tipo' acima
         val = st.number_input("Valor (R$)", min_value=0.01, step=0.50)
         met = st.selectbox("Método", ["PIX", "Crédito", "Débito", "Dinheiro"])
         
@@ -58,6 +62,9 @@ st.title("📊 Dashboard Executivo")
 
 # Cálculos de Métricas
 if not df.empty:
+    # Garante que os tipos numéricos estejam corretos
+    df['Valor'] = pd.to_numeric(df['Valor'])
+    
     total_receita = df[df['Tipo'] == 'Receita']['Valor'].sum()
     total_despesa = df[df['Tipo'] == 'Despesa']['Valor'].sum()
     saldo = total_receita - total_despesa
@@ -65,7 +72,7 @@ if not df.empty:
 
     # Topo: Cards de Resumo
     m1, m2, m3 = st.columns(3)
-    m1.metric("Total de Receitas", f"R$ {total_receita:,.2f}", delta_color="normal")
+    m1.metric("Total de Receitas", f"R$ {total_receita:,.2f}")
     m2.metric("Total de Despesas", f"R$ {total_despesa:,.2f}", delta_color="inverse")
     m3.metric("Saldo Atual", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}", delta_color=cor_saldo)
 
@@ -81,6 +88,8 @@ if not df.empty:
             fig_pizza = px.pie(df_gastos, values='Valor', names='Categoria', 
                              hole=0.4, color_discrete_sequence=px.colors.sequential.RdBu)
             st.plotly_chart(fig_pizza, use_container_width=True)
+        else:
+            st.write("Sem despesas para mostrar no gráfico.")
 
     with g2:
         st.subheader("Meios de Pagamento")
@@ -93,7 +102,6 @@ if not df.empty:
     st.divider()
     st.subheader("📑 Histórico de Movimentações")
     
-    # Ordenar por data mais recente
     df_view = df.sort_values(by="Data", ascending=False)
     st.dataframe(df_view, use_container_width=True)
 
