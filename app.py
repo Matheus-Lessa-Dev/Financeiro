@@ -36,7 +36,7 @@ with st.sidebar:
         
         if tipo == "Receita":
             cats = ["Salário", "Freelance", "Investimentos", "Extra"]
-        else:
+        elif tipo == "Despesa":
             cats = ["Mercado", "Alimentação", "Casa", "Lazer", "Transporte", "Saúde", "Educação"]
             
         cat = st.selectbox("Categoria", cats)
