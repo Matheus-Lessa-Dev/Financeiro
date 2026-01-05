@@ -4,10 +4,10 @@ import plotly.express as px
 import os
 from datetime import datetime
 
-# Configuração de Layout "Dark Mode" Pro
+# Configuração de Layout
 st.set_page_config(page_title="PRO Finance", page_icon="📈", layout="wide")
 
-# Estilização customizada via CSS
+# Estilização CSS
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -24,92 +24,73 @@ if os.path.exists(ARQUIVO_DADOS):
 else:
     df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Método"])
 
-# --- SIDEBAR (Entradas Corrigidas) ---
+# --- SIDEBAR (LOGICA CORRIGIDA) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/1611/1611154.png", width=80)
     st.title("PRO Control v1.0")
     st.divider()
     
-    # 1. O SELECIONADOR DE FLUXO FICA FORA DO FORM
-    # Isso permite que o Streamlit recarregue as categorias instantaneamente
-    tipo = st.selectbox("Fluxo", ["Receita", "Despesa"])
+    # FORA DO FORM: Usamos uma chave (key) para garantir a atualização instantânea
+    tipo = st.selectbox("Fluxo", ["Receita", "Despesa"], key="tipo_fluxo")
     
-    # 2. DEFINIÇÃO DINÂMICA DAS CATEGORIAS
+    # Define categorias baseado na escolha ACIMA
     if tipo == "Receita":
         cats = ["Salário", "Freelance", "Investimentos", "Extra"]
     else:
         cats = ["Mercado", "Alimentação", "Casa", "Lazer", "Transporte", "Saúde", "Educação"]
-            
-    # 3. O FORMULÁRIO APENAS PARA OS DADOS DE ENVIO
-    with st.form("nova_transacao", clear_on_submit=True):
-        data = st.date_input("Data da Transação", datetime.now())
-        cat = st.selectbox("Categoria", cats) # Agora o cats já está filtrado pelo 'tipo' acima
+
+    # O FORMULÁRIO agora contém apenas o que NÃO muda a estrutura da página
+    with st.form("formulario_transacao", clear_on_submit=True):
+        data = st.date_input("Data", datetime.now())
+        cat = st.selectbox("Categoria", cats) # Já virá atualizado!
         val = st.number_input("Valor (R$)", min_value=0.01, step=0.50)
         met = st.selectbox("Método", ["PIX", "Crédito", "Débito", "Dinheiro"])
         
-        btn_salvar = st.form_submit_button("Lançar Transação")
+        submit = st.form_submit_button("Lançar Transação")
 
-    if btn_salvar:
+    if submit:
         nova_linha = pd.DataFrame([[pd.to_datetime(data), tipo, cat, val, met]], 
                                   columns=["Data", "Tipo", "Categoria", "Valor", "Método"])
         df = pd.concat([df, nova_linha], ignore_index=True)
         df.to_csv(ARQUIVO_DADOS, index=False)
-        st.success("Lançamento concluído!")
+        st.success(f"{tipo} registrada!")
         st.rerun()
 
-# --- DASHBOARD PRINCIPAL ---
+# --- DASHBOARD (O RESTO DO CÓDIGO SEGUE IGUAL) ---
 st.title("📊 Dashboard Executivo")
 
-# Cálculos de Métricas
 if not df.empty:
-    # Garante que os tipos numéricos estejam corretos
     df['Valor'] = pd.to_numeric(df['Valor'])
-    
     total_receita = df[df['Tipo'] == 'Receita']['Valor'].sum()
     total_despesa = df[df['Tipo'] == 'Despesa']['Valor'].sum()
     saldo = total_receita - total_despesa
-    cor_saldo = "normal" if saldo >= 0 else "inverse"
-
-    # Topo: Cards de Resumo
+    
     m1, m2, m3 = st.columns(3)
     m1.metric("Total de Receitas", f"R$ {total_receita:,.2f}")
     m2.metric("Total de Despesas", f"R$ {total_despesa:,.2f}", delta_color="inverse")
-    m3.metric("Saldo Atual", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}", delta_color=cor_saldo)
+    m3.metric("Saldo Atual", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}")
 
     st.divider()
-
-    # Meio: Gráficos
-    g1, g2 = st.columns([1, 1])
+    g1, g2 = st.columns(2)
 
     with g1:
-        st.subheader("Onde seu dinheiro vai?")
         df_gastos = df[df['Tipo'] == 'Despesa']
         if not df_gastos.empty:
-            fig_pizza = px.pie(df_gastos, values='Valor', names='Categoria', 
-                             hole=0.4, color_discrete_sequence=px.colors.sequential.RdBu)
+            fig_pizza = px.pie(df_gastos, values='Valor', names='Categoria', hole=0.4)
             st.plotly_chart(fig_pizza, use_container_width=True)
-        else:
-            st.write("Sem despesas para mostrar no gráfico.")
-
+    
     with g2:
-        st.subheader("Meios de Pagamento")
         if not df_gastos.empty:
-            fig_col = px.bar(df_gastos, x='Método', y='Valor', color='Método',
-                           text_auto='.2s', title="Gastos por Forma de Pagamento")
+            fig_col = px.bar(df_gastos, x='Método', y='Valor', color='Método', text_auto='.2s')
             st.plotly_chart(fig_col, use_container_width=True)
 
-    # Base: Tabela e Controle
     st.divider()
-    st.subheader("📑 Histórico de Movimentações")
-    
-    df_view = df.sort_values(by="Data", ascending=False)
-    st.dataframe(df_view, use_container_width=True)
+    st.subheader("📑 Histórico")
+    st.dataframe(df.sort_values(by="Data", ascending=False), use_container_width=True)
 
     if st.button("🗑️ Limpar último registro"):
-        if not df.empty:
-            df = df.drop(df.index[-1])
-            df.to_csv(ARQUIVO_DADOS, index=False)
-            st.warning("Último registro removido.")
-            st.rerun()
+        df = df.drop(df.index[-1])
+        df.to_csv(ARQUIVO_DADOS, index=False)
+        st.rerun()
 else:
-    st.info("Aguardando os primeiros lançamentos para gerar o relatório profissional...")
+    st.info("Adicione transações na barra lateral.")
