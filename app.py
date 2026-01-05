@@ -27,7 +27,7 @@ else:
 # --- SIDEBAR (LOGICA CORRIGIDA) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/1611/1611154.png", width=80)
-    st.title("PRO Control v1.0")
+    st.title("PRO Control v2.0")
     st.divider()
     
     # FORA DO FORM: Usamos uma chave (key) para garantir a atualização instantânea
